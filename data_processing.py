@@ -137,11 +137,15 @@ def process_original_data(path: str, sample_no: str, range_dict: dict):
     # 使用 nan 替换 0，方便 pandas 处理
     excel_data = excel_data.replace(0, numpy.nan, inplace=False)
 
+    # (1,2) 去除缺失值(nan)数据较多的位点
+    excel_data = excel_data.dropna(axis=1, how='any', thresh=data_count * 0.7, inplace=False)
+    # (3) todo: 使用（这一列的）平均值填充缺失值
+    excel_data = fill_nan(excel_data)
     # (4) 数据范围筛选，异常值会设置为缺失值(nan)
     excel_data = check_range(excel_data, range_dict)
     # (5) 拉伊达准则筛选，异常值会设置为缺失值(nan)
-    check_exceptional_data(excel_data)
-    # (1) 去除缺失值(nan)数据较多的位点
+    excel_data = check_exceptional_data(excel_data)
+    # (1,2) 去除缺失值(nan)数据较多的位点
     excel_data = excel_data.dropna(axis=1, how='any', thresh=data_count * 0.7, inplace=False)
     # (3) todo: 使用（这一列的）平均值填充缺失值
     excel_data = fill_nan(excel_data)
