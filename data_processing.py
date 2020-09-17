@@ -1,5 +1,7 @@
 from pprint import pprint
 
+import numpy
+from pandas import DataFrame
 import pandas
 
 
@@ -36,22 +38,60 @@ def get_variable_range(path: str) -> dict:
     return range_dict
 
 
-# 读附件三，对 285 和 313 数据进行处理
-def process_original_data(path: str, sample_no: str, range_dict: dict):
-    excel_data = None
-    if sample_no == '285':
-        # nrows 不包含表头
-        excel_data = pandas.read_excel(path, header=[1, 2], sheet_name=4, nrows=40)
-    elif sample_no == '313':
-        excel_data = pandas.read_excel(path, header=[1, 2], sheet_name=4, skiprows=range(3, 44), nrows=40)
-
+# (4) 数据范围筛选
+def check_range(excel_data: DataFrame, range_dict: dict):
     # 遍历列，col_name 为列名，col_content 为该列的具体内容
     for col_name, col_content in excel_data.iteritems():
         # print("col_name: " + col_name[0])
         if col_name[0] == '时间':
             continue
 
-        # (1)删掉全为 0 或多数为 0 的列
+        range_lower, range_upper = range_dict[col_name[0]]['lower_bound'], range_dict[col_name[0]]['upper_bound']
+        for row_index in range(len(col_content)):
+            val = float(col_content[row_index])
+            if val < range_lower or val > range_upper:
+                print("[invalid row] var_id: %s, lower: %f, upper: %f, index: %d, val: %f" %
+                      (col_name[0], range_lower, range_upper, row_index, val))
+                excel_data.loc[row_index, col_name] = numpy.nan
+                # excel_data = excel_data.drop([row_index], axis=0)
+
+    return excel_data
+
+
+# (5) 拉伊达准则去除异常值
+def check_exceptional_data(excel_data: DataFrame):
+    for col_name, col_content in excel_data.iteritems():
+        if col_name[0] == '时间':
+            continue
+
+        # 求平均值
+        mean_value = col_content.mean()
+        # 求标准差
+        std_value = col_content.std()
+        # 位于(μ-3σ,μ+3σ)区间内的数据是正常的，不在该区间的数据是异常的
+        # ser1中的数值小于μ-3σ或大于μ+3σ均为异常值
+        # 一旦发现异常值就标注为True，否则标注为False
+        rule = (mean_value - 3 * std_value > col_content) | (mean_value + 3 * std_value < col_content)
+        # 返回异常值的位置索引
+        row_index_list = numpy.arange(col_content.shape[0])[rule]
+        for index in row_index_list:
+            print("[exceptional data] var_id: %s, index: %d, val: %f" %
+                  (col_name[0], index, col_content[index]))
+            # todo: 异常值视为缺失值，利用缺失值的处理方法修正异常值
+            excel_data.loc[index, col_name] = numpy.nan
+
+    return excel_data
+
+
+# (1) 删掉全为 0 或多数为 0 的列
+@DeprecationWarning
+def remove_zero(excel_data: DataFrame):
+    # 遍历列，col_name 为列名，col_content 为该列的具体内容
+    for col_name, col_content in excel_data.iteritems():
+        # print("col_name: " + col_name[0])
+        if col_name[0] == '时间':
+            continue
+
         count = 0
         # 遍历该列的每一行
         for row_index in range(len(col_content)):
@@ -65,20 +105,59 @@ def process_original_data(path: str, sample_no: str, range_dict: dict):
             excel_data = excel_data.drop(col_name[0], axis=1)
             continue
 
-        # (4)数据范围筛选
-        range_lower, range_upper = range_dict[col_name[0]]['lower_bound'], range_dict[col_name[0]]['upper_bound']
-        for row_index in range(len(col_content)):
-            if float(col_content[row_index]) < range_lower or float(col_content[row_index]) > range_upper:
-                print("var_id: %s, lower: %f, upper: %f" % (col_name[0], range_lower, range_upper))
-                print("delete row " + str(row_index))
-                # excel_data = excel_data.drop([row_index], axis=0)
+    return excel_data
 
-        # (5)拉伊达准则去除异常值
 
-    # print(excel_data)
+# (3) 使用列平均值填充缺失值
+def fill_nan(excel_data: DataFrame):
+    for col_name, col_content in excel_data.iteritems():
+        # print("col_name: " + col_name[0])
+        if col_name[0] == '时间':
+            continue
+
+        mean_val = col_content.mean()
+        col_content.fillna(mean_val, inplace=True)
+
+    return excel_data
+
+
+# 读附件三，对 285 和 313 数据进行处理
+def process_original_data(path: str, sample_no: str, range_dict: dict):
+    excel_data = None
+    if sample_no == '285':
+        # nrows 不包含表头
+        excel_data = pandas.read_excel(path, header=[1, 2], sheet_name=4, nrows=40)
+    elif sample_no == '313':
+        excel_data = pandas.read_excel(path, header=[1, 2], sheet_name=4, skiprows=range(3, 44), nrows=40)
+
+    # 使用 nan 替换 0，方便 pandas 处理
+    excel_data = excel_data.replace(0, numpy.nan, inplace=False)
+
+    # (4) 数据范围筛选，异常值会设置为缺失值(nan)
+    excel_data = check_range(excel_data, range_dict)
+    # (5) 拉伊达准则筛选，异常值会设置为缺失值(nan)
+    check_exceptional_data(excel_data)
+    # (1) 去除缺失值(nan)数据较多的位点
+    excel_data = excel_data.dropna(axis=1, how='any', thresh=40 * 0.7, inplace=False)
+    # (3) todo: 使用（这一列的）平均值填充缺失值
+    excel_data = fill_nan(excel_data)
+
+    # 添加平均值到文件末尾
+    avg_data = []
+    for col_name, col_content in excel_data.iteritems():
+        if col_name[0] == '时间':
+            avg_data.append("")
+        else:
+            avg_data.append(format(col_content.mean(), '.4f'))
+    excel_data.loc[40] = avg_data
+
+    return excel_data
 
 
 if __name__ == '__main__':
     range_data = get_variable_range("/Users/faye/Downloads/数模题/附件四：354个操作变量信息.xlsx")
     # process_original_data("D:\\Downloads\\2020年中国研究生数学建模竞赛赛题\\2020年B题\\数模题\\附件三：285号和313号样本原始数据.xlsx")
-    process_original_data("/Users/faye/Downloads/数模题/附件三：285号和313号样本原始数据.xlsx", "285", range_data)
+    processed_data = process_original_data("/Users/faye/Downloads/数模题/test.xlsx", "313", range_data)
+
+    # print(excel_data)
+    pandas.DataFrame(processed_data).to_excel("/Users/faye/Desktop/output.xlsx", sheet_name='Sheet1', header=True)
