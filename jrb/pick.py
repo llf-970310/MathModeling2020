@@ -1,22 +1,17 @@
 import numpy as np
 import pandas as pd
-from factor_analyzer import FactorAnalyzer
-import matplotlib.pyplot as plt
-from factor_analyzer.factor_analyzer import calculate_kmo
-from sklearn import preprocessing
-from factor_analyzer.factor_analyzer import calculate_bartlett_sphericity
-from sklearn.feature_selection import VarianceThreshold
 from pandas.core.frame import DataFrame
 
 
 df = pd.read_excel("data.xlsx")
 df_x = df.copy()
-col_y = df_x[10]
+col_y = df_x[9]
+# col_y2 = df_x[8]
 df_x = df_x.drop([8, 9, 10], axis=1)
 
 multi_valve = 0.2
 low_var_valve = 0.01
-corr_valve = 0.28
+corr_valve = 0.4
 high_corr_valve = 0.9
 
 # 多重复值过滤
@@ -81,4 +76,5 @@ df_x.to_excel('x.xlsx', index=False, header=True)
 # y
 df_y = DataFrame()
 df_y[1] = col_y
+# df_y[2] = col_y2
 df_y.to_excel('y.xlsx', index=False, header=True)

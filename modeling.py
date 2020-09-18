@@ -22,10 +22,13 @@ def try_different_method(model, x_train, x_test, y_train, y_test):
 def modeling(path: str):
     excel_data = pandas.read_excel(path, header=0)
     # 将特征划分到 X 中，标签划分到 Y 中
-    x = excel_data.iloc[:, 0:21]
+    x = excel_data.iloc[:, 0:16]
     y = excel_data['ret']
     # 使用train_test_split函数划分数据集(训练集占75%，测试集占25%)
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
+    df_x = pandas.read_excel("x.xlsx")
+    df_y = pandas.read_excel("y.xlsx")
+    x_train, x_test, y_train, y_test = train_test_split(df_x.values, df_y[1].values, test_size=0.3, random_state=0)
 
     # 决策树
     model_DecisionTreeRegressor = tree.DecisionTreeRegressor()
@@ -58,4 +61,4 @@ def modeling(path: str):
 
 
 if __name__ == '__main__':
-    modeling("/Users/faye/Downloads/variable.xlsx")
+    modeling("variable.xlsx")

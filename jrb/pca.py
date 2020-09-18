@@ -22,9 +22,12 @@ def normalization(x):
 
 
 def main():
-    df = pd.read_csv('data.csv', sep='\t')
+    df = pd.read_excel('data.xlsx')
     # df.drop(df.columns[9], axis=1, inplace=True)
-    mat = df.values
+    df_new = DataFrame()
+    df_new[8] = df[8]
+    df_new[9] = df[9]
+    mat = df_new.values
     mat = normalization(mat)
     do_pca(mat)
 
