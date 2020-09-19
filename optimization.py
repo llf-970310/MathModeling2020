@@ -1,3 +1,4 @@
+import json
 from functools import cmp_to_key
 from pprint import pprint
 
@@ -22,13 +23,17 @@ def variable_list_sort(var_list, range_data, mapping_data):
     return [tuple_item[0] for tuple_item in tmp]
 
 
-def greedy(sample_dict: dict, initial_ron: float, row_index: int):
-    print("original: %.5f" % initial_ron)
+def greedy(sample_dict: dict, ron: float, row_index: int):
+    # 描述变化量
+    delta_sum_dict = {}
+
+    initial_ron = ron
     range_data = get_variable_range("/Users/faye/Downloads/数模题/附件四：354个操作变量信息.xlsx")
     mapping_data = pandas.read_excel("./data/title.xlsx")
     variable_list = []
     for key, val in sample_dict.items():
         variable_list.append(key)
+        delta_sum_dict[key] = 0
     variable_list = variable_list_sort(variable_list, range_data, mapping_data)
     variable_len = len(variable_list)
 
@@ -40,6 +45,7 @@ def greedy(sample_dict: dict, initial_ron: float, row_index: int):
         variable_pick_no = variable_list[random]
         # index 1-14 为非操作变量，无法调整
         if 1 <= variable_pick_no <= 14:
+            random += 1
             continue
         variable_pick = mapping_data[variable_pick_no][1]
         # print("pick_index: %d, pick item: %s" % (variable_pick_no, variable_pick))
@@ -63,9 +69,10 @@ def greedy(sample_dict: dict, initial_ron: float, row_index: int):
         # 1. 变量仍在范围内
         # 2. 硫含量小于 5
         # 3. ron 损失有降低
-        if low <= new_sample[variable_pick_no] <= high and check_sulfur(new_sample) is True and new_ron <= initial_ron:
-            initial_ron = new_ron
+        if low <= new_sample[variable_pick_no] <= high and check_sulfur(new_sample) is True and new_ron <= ron:
+            ron = new_ron
             sample_dict = new_sample
+            delta_sum_dict[variable_pick_no] += delta
         else:
             count += 1
             random += 1
@@ -73,7 +80,15 @@ def greedy(sample_dict: dict, initial_ron: float, row_index: int):
         if count > 10 or random >= len(variable_list):
             break
 
-    print("new: %.5f" % initial_ron)
+    with open('./result.txt', 'a') as f:
+        f.write("row_index: %d, original: %.5f, new: %.5f, percent: %.2f%%" % (row_index, initial_ron, ron, (initial_ron - ron)/initial_ron*100))
+        f.write("\n")
+        f.write(json.dumps(delta_sum_dict))
+        f.write("\n\n")
+
+    print("row_index: %d, original: %.5f, new: %.5f, percent: %.2f%%" % (row_index, initial_ron, ron, (initial_ron - ron)/initial_ron*100))
+    print(delta_sum_dict)
+    print()
 
 
 # 判断硫含量
