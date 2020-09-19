@@ -1,3 +1,4 @@
+from functools import cmp_to_key
 from pprint import pprint
 
 import joblib
@@ -7,19 +8,35 @@ import numpy as np
 from data_processing import get_variable_range
 
 
+def variable_list_sort(var_list, range_data, mapping_data):
+    model = joblib.load("./regression_model.pkl")
+    dict = {}
+    for i in range(len(var_list)):
+        # 非操作变量
+        if 1 <= var_list[i] <= 14:
+            delta = 1
+        else:
+            delta = range_data[mapping_data[var_list[i]][1]]["delta"]
+        dict[var_list[i]] = model.coef_[0][i] * delta
+    tmp = sorted(dict.items(), key=lambda kv: (kv[1], kv[0]))
+    return [tuple_item[0] for tuple_item in tmp]
+
+
 def greedy(sample_dict: dict, initial_ron: float, row_index: int):
-    print(initial_ron)
+    print("original: %.5f" % initial_ron)
     range_data = get_variable_range("/Users/faye/Downloads/数模题/附件四：354个操作变量信息.xlsx")
     mapping_data = pandas.read_excel("./data/title.xlsx")
     variable_list = []
     for key, val in sample_dict.items():
         variable_list.append(key)
+    variable_list = variable_list_sort(variable_list, range_data, mapping_data)
     variable_len = len(variable_list)
 
     count = 0
+    random = 0
     while True:
         # 随机挑选一个变量进行调整
-        random = np.random.randint(low=0, high=variable_len)
+        # random = np.random.randint(low=0, high=variable_len)
         variable_pick_no = variable_list[random]
         # index 1-14 为非操作变量，无法调整
         if 1 <= variable_pick_no <= 14:
@@ -38,20 +55,25 @@ def greedy(sample_dict: dict, initial_ron: float, row_index: int):
         new_sample[variable_pick_no] = cur_val + delta
         new_ron = get_new_ron(new_sample, row_index)
 
+        # print(low <= new_sample[variable_pick_no] <= high)
+        # print(check_sulfur(new_sample))
+        # print(new_ron <= initial_ron)
+
         # 变更完满足如下条件：
         # 1. 变量仍在范围内
         # 2. 硫含量小于 5
         # 3. ron 损失有降低
-        if low <= new_sample[variable_pick_no] <= high and check_sulfur(new_sample) is True and new_ron < initial_ron:
+        if low <= new_sample[variable_pick_no] <= high and check_sulfur(new_sample) is True and new_ron <= initial_ron:
             initial_ron = new_ron
             sample_dict = new_sample
         else:
             count += 1
+            random += 1
 
-        if count > 10:
+        if count > 10 or random >= len(variable_list):
             break
 
-    print(initial_ron)
+    print("new: %.5f" % initial_ron)
 
 
 # 判断硫含量
@@ -63,7 +85,10 @@ def check_sulfur(sample_dict: dict):
         if key in df_x.columns:
             df_x.loc[0, key] = val
 
-    return model.predict(df_x[0:1])[0] == 1.0
+    if model.predict(df_x[0:1])[0] == 1.0:
+        return True
+    else:
+        return False
 
 
 # 判断 ron 损失
@@ -74,7 +99,7 @@ def get_new_ron(sample_dict: dict, index: int):
     for key, val in sample_dict.items():
         df_x.loc[index, key] = val
 
-    return model.predict(df_x[index:index + 1])[0]
+    return model.predict(df_x[index:index + 1])[0][0]
 
 
 if __name__ == "__main__":
@@ -85,4 +110,4 @@ if __name__ == "__main__":
     record_list = df_x.to_dict('records')
 
     for i in range(325):
-        greedy(record_list[i], df_y.loc[i], i)
+        greedy(record_list[i], df_y.loc[i, 1], i)
