@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 from sklearn import tree, linear_model, svm, neighbors, ensemble, metrics
 from sklearn.ensemble import BaggingRegressor, RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
 import numpy as np
+from sklearn.preprocessing import PolynomialFeatures
 from sklearn.tree import ExtraTreeRegressor
 import util
 
@@ -19,12 +20,25 @@ def read_data(type: str):
     # # 使用train_test_split函数划分数据集(训练集占75%，测试集占25%)
     # x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
 
-    df_x, df_y = None, None
+    x_train, x_test, y_train, y_test = None, None, None, None
     if type == "roh":
         # 特征
         df_x = pandas.read_excel("./data/x1.xlsx")
+        # todo: 使用随机森林进行特征选择
+        # index_list = util.feature_selector()
+        # df_x = pandas.read_excel("/Users/faye/Desktop/output.xlsx", header=[0, 1])
+        # df_x = df_x.drop(["样本编号", "时间"], axis=1)
+        # df_x = df_x.iloc[:, index_list]
         # 标签
         df_y = pandas.read_excel("./data/y1.xlsx")
+        # 去掉变化在 1 以下的
+        # drop_index = df_y[df_y[1] < 1.0].index.values
+        # df_x = df_x.drop(drop_index)
+        # df_y = df_y.drop(drop_index)
+        # todo: 增加特征多项式
+        poly = PolynomialFeatures(degree=1, include_bias=False)
+        df_x = poly.fit_transform(df_x)
+        x_train, x_test, y_train, y_test = train_test_split(df_x, df_y.values, test_size=0.2, random_state=0)
     elif type == "s":
         # 特征
         df_x = pandas.read_excel("./data/x2.xlsx")
@@ -33,8 +47,7 @@ def read_data(type: str):
         # 处理 df_y，替换为 0 和 1
         df_y.loc[df_y[1] <= 5, 1] = 1
         df_y.loc[df_y[1] > 5, 1] = 0
-
-    x_train, x_test, y_train, y_test = train_test_split(df_x.values, df_y.values, test_size=0.3, random_state=0)
+        x_train, x_test, y_train, y_test = train_test_split(df_x.values, df_y.values, test_size=0.3, random_state=0)
 
     return x_train, x_test, y_train, y_test
 
@@ -67,7 +80,16 @@ def classification(model, x_train, x_test, y_train, y_test):
 
 # 回归（连续数据），针对于 ROH
 def regression(model, x_train, x_test, y_train, y_test):
-    fit_model(model, x_train, x_test, y_train, y_test)
+    model, result = fit_model(model, x_train, x_test, y_train, y_test)
+
+    plt.scatter(y_test, result)
+    plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--')
+    plt.xlabel('true')
+    plt.ylabel('predict')
+    plt.show()
+
+    print(metrics.mean_absolute_error(y_test, result))
+    print(metrics.mean_squared_error(y_test, result))
 
 
 if __name__ == '__main__':
@@ -79,4 +101,3 @@ if __name__ == '__main__':
     x_train, x_test, y_train, y_test = read_data("s")
     model = util.get_model("model_LogisticRegression")
     classification(model, x_train, x_test, y_train, y_test)
-
