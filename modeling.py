@@ -7,31 +7,11 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, GridSearchCV
 import numpy as np
 from sklearn.tree import ExtraTreeRegressor
-
-
-def get_model(model_name):
-    model_dict = {
-        # 回归
-        "model_DecisionTreeRegressor": tree.DecisionTreeRegressor(),  # 决策树
-        "model_LinearRegression": linear_model.LinearRegression(),  # 线性回归
-        "model_SVR": svm.SVR(),  # SVM
-        "model_KNeighborsRegressor": neighbors.KNeighborsRegressor(),  # KNN
-        "model_RandomForestRegressor": ensemble.RandomForestRegressor(n_estimators=20),  # 随机森林，这里使用20个决策树
-        "model_AdaBoostRegressor": ensemble.AdaBoostRegressor(n_estimators=50),  # Adaboost，这里使用50个决策树
-        "model_GradientBoostingRegressor": ensemble.GradientBoostingRegressor(n_estimators=100),  # GBRT，这里使用100个决策树
-        "model_BaggingRegressor": BaggingRegressor(),  # Bagging回归
-        "model_ExtraTreeRegressor": ExtraTreeRegressor(),  # ExtraTree极端随机树回归
-        # 分类
-        "model_LogisticRegression": LogisticRegression(C=1000, class_weight={0: 0.8, 1: 0.2}),  # 逻辑回归
-        "model_SVC": svm.SVC(class_weight="balanced"),  # 向量机
-        "model_RandomForestClassifier": RandomForestClassifier(n_estimators=7, class_weight="balanced")  # 随机森林
-    }
-
-    return model_dict[model_name]
+import util
 
 
 # 读取数据并划分训练集和测试集
-def read_data(path: str, type: str):
+def read_data(type: str):
     # excel_data = pandas.read_excel(path, header=0)
     # # 将特征划分到 X 中，标签划分到 Y 中
     # x = excel_data.iloc[:, 0:15]
@@ -39,11 +19,22 @@ def read_data(path: str, type: str):
     # # 使用train_test_split函数划分数据集(训练集占75%，测试集占25%)
     # x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
 
-    # 特征
-    df_x = pandas.read_excel("./jrb/x.xlsx")
-    # 标签
-    df_y = pandas.read_excel("./y.xlsx")
-    x_train, x_test, y_train, y_test = train_test_split(df_x.values, df_y[type].values, test_size=0.3, random_state=0)
+    df_x, df_y = None, None
+    if type == "roh":
+        # 特征
+        df_x = pandas.read_excel("./data/x1.xlsx")
+        # 标签
+        df_y = pandas.read_excel("./data/y1.xlsx")
+    elif type == "s":
+        # 特征
+        df_x = pandas.read_excel("./data/x2.xlsx")
+        # 标签
+        df_y = pandas.read_excel("./data/y2.xlsx")
+        # 处理 df_y，替换为 0 和 1
+        df_y.loc[df_y[1] <= 5, 1] = 1
+        df_y.loc[df_y[1] > 5, 1] = 0
+
+    x_train, x_test, y_train, y_test = train_test_split(df_x.values, df_y.values, test_size=0.3, random_state=0)
 
     return x_train, x_test, y_train, y_test
 
@@ -81,10 +72,11 @@ def regression(model, x_train, x_test, y_train, y_test):
 
 if __name__ == '__main__':
     # 回归预测 roh
-    x_train, x_test, y_train, y_test = read_data("", "roh")
-    model = get_model("model_LinearRegression")
+    x_train, x_test, y_train, y_test = read_data("roh")
+    model = util.get_model("model_LinearRegression")
     regression(model, x_train, x_test, y_train, y_test)
     # 二分类预测硫含量
-    x_train, x_test, y_train, y_test = read_data("", "s")
-    model = get_model("model_LogisticRegression")
+    x_train, x_test, y_train, y_test = read_data("s")
+    model = util.get_model("model_LogisticRegression")
     classification(model, x_train, x_test, y_train, y_test)
+
