@@ -10,7 +10,7 @@ def get_variable_range(path: str) -> dict:
     data = pandas.read_excel(path)
     range_dict = {}
     for index, row in data.iterrows():
-        var_id, var_name, var_range = row[1], row[2], row[3]
+        var_id, var_name, var_range, delta = row[1], row[2], row[3], row[5]
         # 范围去括号
         var_range = var_range.replace('(', '')
         var_range = var_range.replace(')', '')
@@ -20,6 +20,7 @@ def get_variable_range(path: str) -> dict:
         split_list = var_range.split("-")
         range_dict[var_id] = {}
         range_dict[var_id]["lower_bound"], range_dict[var_id]["upper_bound"] = 0, 0
+        range_dict[var_id]["delta"] = float(delta)
         # left + right +
         if len(split_list) == 2:
             range_dict[var_id]["lower_bound"], range_dict[var_id]["upper_bound"] = float(split_list[0]), float(

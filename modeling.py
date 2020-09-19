@@ -81,6 +81,7 @@ def classification(model, x_train, x_test, y_train, y_test):
 # 回归（连续数据），针对于 ROH
 def regression(model, x_train, x_test, y_train, y_test):
     model, result = fit_model(model, x_train, x_test, y_train, y_test)
+    joblib.dump(model, 'regression_model.pkl')
 
     plt.scatter(y_test, result)
     plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--')
