@@ -20,7 +20,8 @@ def get_model(model_name):
         "model_BaggingRegressor": BaggingRegressor(),  # Bagging回归
         "model_ExtraTreeRegressor": ExtraTreeRegressor(),  # ExtraTree极端随机树回归
         # 分类
-        "model_LogisticRegression": LogisticRegression(C=1000, class_weight={0: 0.8, 1: 0.2}),  # 逻辑回归
+        "model_LogisticRegression_weight": LogisticRegression(C=1000, class_weight={0: 0.8, 1: 0.2}),  # 逻辑回归
+        "model_LogisticRegression": LogisticRegression(C=1000),  # 逻辑回归（无权重）
         "model_SVC": svm.SVC(class_weight="balanced"),  # 向量机
         "model_RandomForestClassifier": RandomForestClassifier(n_estimators=7, class_weight="balanced")  # 随机森林
     }

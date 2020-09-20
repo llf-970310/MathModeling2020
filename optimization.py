@@ -28,7 +28,7 @@ def greedy(sample_dict: dict, ron: float, row_index: int):
     delta_sum_dict = {}
 
     initial_ron = ron
-    range_data = get_variable_range("/Users/faye/Downloads/数模题/附件四：354个操作变量信息.xlsx")
+    range_data = get_variable_range("./data/354个操作变量信息.xlsx")
     mapping_data = pandas.read_excel("./data/title.xlsx")
     variable_list = []
     for key, val in sample_dict.items():
@@ -86,14 +86,14 @@ def greedy(sample_dict: dict, ron: float, row_index: int):
         f.write(json.dumps(delta_sum_dict))
         f.write("\n\n")
 
-    print("row_index: %d, original: %.5f, new: %.5f, percent: %.2f%%" % (row_index, initial_ron, ron, (initial_ron - ron)/initial_ron*100))
+    print("row_index: %d, original: %.5f, new: %.5f, percent: %.2f%%" % (row_index, initial_ron, ron, (initial_ron - ron) / initial_ron * 100))
     print(delta_sum_dict)
     print()
 
 
 # 判断硫含量
 def check_sulfur(sample_dict: dict):
-    model = joblib.load("./classification_model.pkl")
+    model = joblib.load("./classification_model_s_5.pkl")
     df_x = pandas.read_excel("./data/x2.xlsx")
 
     for key, val in sample_dict.items():
@@ -125,4 +125,8 @@ if __name__ == "__main__":
     record_list = df_x.to_dict('records')
 
     for i in range(325):
-        greedy(record_list[i], df_y.loc[i, 1], i)
+        # 此处使用计算值作为基准，而不是 excel 文件里的值
+        base = get_new_ron(record_list[i], i)
+        greedy(record_list[i], base, i)
+
+    # greedy(record_list[132], df_y.loc[132, 1], 132)

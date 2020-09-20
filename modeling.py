@@ -47,7 +47,16 @@ def read_data(type: str):
         # 处理 df_y，替换为 0 和 1
         df_y.loc[df_y[1] <= 5, 1] = 1
         df_y.loc[df_y[1] > 5, 1] = 0
-        x_train, x_test, y_train, y_test = train_test_split(df_x.values, df_y.values, test_size=0.3, random_state=0)
+        x_train, x_test, y_train, y_test = train_test_split(df_x.values, df_y.values, test_size=0.2, random_state=0)
+    elif type == "s_3.2":
+        # 特征
+        df_x = pandas.read_excel("./data/x2.xlsx")
+        # 标签
+        df_y = pandas.read_excel("./data/y2.xlsx")
+        # 处理 df_y，替换为 0 和 1
+        df_y.loc[df_y[1] <= 3.2, 1] = 1
+        df_y.loc[df_y[1] > 3.2, 1] = 0
+        x_train, x_test, y_train, y_test = train_test_split(df_x.values, df_y.values, test_size=0.2, random_state=0)
 
     return x_train, x_test, y_train, y_test
 
@@ -67,11 +76,11 @@ def fit_model(model, x_train, x_test, y_train, y_test):
 
 
 # 二分类（离散数据），针对于硫含量
-def classification(model, x_train, x_test, y_train, y_test):
+def classification(model, x_train, x_test, y_train, y_test, model_name):
     # 训练模型，并返回训练后的模型和预测结果集
     model, result = fit_model(model, x_train, x_test, y_train, y_test)
     # 模型持久化
-    joblib.dump(model, 'classification_model.pkl')
+    joblib.dump(model, model_name + '.pkl')
 
     print("精确率：%f" % metrics.precision_score(y_test, result))
     print("召回率：%f" % metrics.recall_score(y_test, result))
@@ -98,7 +107,11 @@ if __name__ == '__main__':
     x_train, x_test, y_train, y_test = read_data("roh")
     model = util.get_model("model_LinearRegression")
     regression(model, x_train, x_test, y_train, y_test)
-    # 二分类预测硫含量
+    # 二分类预测硫含量(是否大于 5)
     x_train, x_test, y_train, y_test = read_data("s")
+    model = util.get_model("model_LogisticRegression_weight")
+    classification(model, x_train, x_test, y_train, y_test, "classification_model_s_5")
+    # 二分类预测硫含量(是否大于 3.2)
+    x_train, x_test, y_train, y_test = read_data("s_3.2")
     model = util.get_model("model_LogisticRegression")
-    classification(model, x_train, x_test, y_train, y_test)
+    classification(model, x_train, x_test, y_train, y_test, "classification_model_s_3.2")
