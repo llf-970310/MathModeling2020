@@ -15,7 +15,7 @@ def variable_list_sort(var_list, range_data, mapping_data):
     for i in range(len(var_list)):
         # 非操作变量
         if 1 <= var_list[i] <= 14:
-            delta = 1
+            delta = 0
         else:
             delta = range_data[mapping_data[var_list[i]][1]]["delta"]
         dict[var_list[i]] = model.coef_[0][i] * delta
@@ -24,7 +24,10 @@ def variable_list_sort(var_list, range_data, mapping_data):
 
 
 def greedy(sample_dict: dict, ron: float, row_index: int):
+    # 记录变化过程
     df = pandas.DataFrame()
+    # 只记录变量的初始值和最终值，忽略过程量
+    df_result = pandas.DataFrame()
 
     # 描述变化量
     delta_sum_dict = {}
@@ -33,6 +36,12 @@ def greedy(sample_dict: dict, ron: float, row_index: int):
     tmp_dict["ron损失"] = ron
     tmp_dict["硫"] = check_sulfur(sample_dict, row_index, "3.2")
     df = df.append(tmp_dict, ignore_index=True)
+    # 优化前属性
+    tmp_dict = copy.deepcopy(sample_dict)
+    tmp_dict["ron损失"] = ron
+    tmp_dict["样本编号"] = row_index+1
+    tmp_dict["降幅"] = str(0)
+    df_result = df_result.append(tmp_dict, ignore_index=True)
 
     initial_ron = ron
     range_data = get_variable_range("./data/354个操作变量信息.xlsx")
@@ -64,24 +73,23 @@ def greedy(sample_dict: dict, ron: float, row_index: int):
         cur_val = sample_dict[variable_pick_no]
 
         # 获取变化后的数据
-        new_sample = sample_dict
-        new_sample[variable_pick_no] = cur_val + delta
-        new_ron = get_new_ron(new_sample, row_index)
+        # new_sample = sample_dict
+        sample_dict[variable_pick_no] += delta
+        new_ron = get_new_ron(sample_dict, row_index)
 
-        # print(low <= new_sample[variable_pick_no] <= high)
-        # print(check_sulfur(new_sample, row_index, "5"))
-        # print(new_ron <= initial_ron)
+        # print(low <= sample_dict[variable_pick_no] <= high)
+        # print(check_sulfur(sample_dict, row_index, "5"))
+        # print(new_ron <= ron)
         # print()
 
         # 变更完满足如下条件：
         # 1. 变量仍在范围内
         # 2. 硫含量小于 5
         # 3. ron 损失有降低
-        if low <= new_sample[variable_pick_no] <= high and check_sulfur(new_sample, row_index, "5") is True and new_ron <= ron:
+        if low <= sample_dict[variable_pick_no] <= high and check_sulfur(sample_dict, row_index, "5") is True and new_ron <= ron:
             ron = new_ron
-            sample_dict = new_sample
+            # sample_dict = sample_dict
             delta_sum_dict[variable_pick_no] += delta
-            # optiization_list.append(copy.deepcopy(sample_dict))
             tmp_dict = copy.deepcopy(sample_dict)
             tmp_dict["ron损失"] = ron
             tmp_dict["硫"] = check_sulfur(sample_dict, row_index, "3.2")
@@ -89,17 +97,27 @@ def greedy(sample_dict: dict, ron: float, row_index: int):
         else:
             count += 1
             random += 1
+            sample_dict[variable_pick_no] -= delta
 
         if count > 10 or random >= len(variable_list):
             break
 
-    with open('./result.txt', 'a') as f:
-        f.write("row_index: %d, original: %.5f, new: %.5f, percent: %.2f%%" % (row_index, initial_ron, ron, (initial_ron - ron)/initial_ron*100))
-        f.write("\n")
-        f.write(json.dumps(delta_sum_dict))
-        f.write("\n\n")
+    # with open('./result.txt', 'a') as f:
+    #     f.write("row_index: %d, original: %.5f, new: %.5f, percent: %.2f%%" % (row_index, initial_ron, ron, (initial_ron - ron)/initial_ron*100))
+    #     f.write("\n")
+    #     f.write(json.dumps(delta_sum_dict))
+    #     f.write("\n\n")
 
-    df.to_excel("./data/result/" + str(row_index + 1) + ".xlsx", index=False, header=True)
+    # 优化后属性
+    tmp_dict = copy.deepcopy(sample_dict)
+    tmp_dict["ron损失"] = ron
+    tmp_dict["样本编号"] = row_index + 1
+    tmp_dict["降幅"] = str((initial_ron - ron)/initial_ron*100) + "%"
+    df_result = df_result.append(tmp_dict, ignore_index=True)
+
+    df.to_excel("./data/result/" + str(row_index + 1) + "_process.xlsx", index=False, header=True)
+    df_result.to_excel("./data/result/" + str(row_index + 1) + "_result.xlsx", index=False, header=True)
+
     print("row_index: %d, original: %.5f, new: %.5f, percent: %.2f%%" % (row_index, initial_ron, ron, (initial_ron - ron) / initial_ron * 100))
     print(delta_sum_dict)
     print()
