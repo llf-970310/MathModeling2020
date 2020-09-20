@@ -54,8 +54,8 @@ def read_data(type: str):
         # 标签
         df_y = pandas.read_excel("./data/y2.xlsx")
         # 处理 df_y，替换为 0 和 1
-        df_y.loc[df_y[1] <= 3.2, 1] = 1
-        df_y.loc[df_y[1] > 3.2, 1] = 0
+        df_y.loc[df_y[1] != 3.2, 1] = 0
+        df_y.loc[df_y[1] == 3.2, 1] = 1
         x_train, x_test, y_train, y_test = train_test_split(df_x.values, df_y.values, test_size=0.2, random_state=0)
 
     return x_train, x_test, y_train, y_test
